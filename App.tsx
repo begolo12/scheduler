@@ -12,13 +12,88 @@ import Login from './components/Login';
 import Toaster, { ToastMessage } from './components/Toaster'; // Import Toaster
 import { TaskModal, NewPersonnelModal, ProjectModal } from './components/Modals';
 import { Tab, Task, User, Role, Project, AppNotification, FileAttachment } from './types'; // Updated Import
-import { USERS as MOCK_USERS, TASKS as MOCK_TASKS, PROJECTS as MOCK_PROJECTS, TELEGRAM_BOT_TOKEN } from './constants';
+import { USERS as MOCK_USERS, TELEGRAM_BOT_TOKEN } from './constants';
 
 // --- CONFIGURATION ---
 // CRITICAL: Set to FALSE.
 // We are using Firebase Cloud Functions (Server webhook). 
 // Browser polling causes CORS errors and conflicts with the webhook.
 const CLIENT_SIDE_POLLING_ENABLED = false; 
+
+// --- MANUAL SEED DATA (Moved here to prevent zombie auto-seeding) ---
+const SEED_PROJECTS: Project[] = [
+  {
+    id: 'p1',
+    title: 'HRMS SYSTEM',
+    department: 'Busdev',
+    startDate: new Date('2025-11-01'),
+    endDate: new Date('2025-12-31'),
+    status: 'Active'
+  },
+  {
+    id: 'p2',
+    title: 'WEBSITE REDESIGN',
+    department: 'Operasi',
+    startDate: new Date('2025-12-01'),
+    endDate: new Date('2026-01-31'),
+    status: 'Active'
+  }
+];
+
+const SEED_TASKS: Task[] = [
+  {
+    id: 't1',
+    projectId: 'p1',
+    title: 'Database Karyawan',
+    department: 'Busdev',
+    status: 'Active',
+    progress: 'Start',
+    progressDate: new Date('2025-12-01'),
+    startDate: new Date('2025-12-01'),
+    endDate: new Date('2025-12-10'),
+    createdAt: new Date('2025-11-28'),
+    assignees: ['u1'],
+    history: [
+        { status: 'Start', date: new Date('2025-12-01'), updatedBy: 'u1' }
+    ]
+  },
+  {
+    id: 't2',
+    projectId: 'p1',
+    title: 'Fitur Absensi',
+    department: 'Busdev',
+    status: 'Active',
+    progress: 'Draft',
+    progressDate: new Date('2025-12-15'),
+    startDate: new Date('2025-12-11'),
+    endDate: new Date('2025-12-20'),
+    createdAt: new Date('2025-11-29'),
+    assignees: ['u2'],
+    history: [
+        { status: 'Start', date: new Date('2025-12-12'), updatedBy: 'u2' }, 
+        { status: 'Draft', date: new Date('2025-12-15'), updatedBy: 'u2' }
+    ]
+  },
+  {
+    id: 't3',
+    projectId: 'p2',
+    title: 'UI/UX Mockup',
+    department: 'Operasi',
+    status: 'Done',
+    progress: 'Finish',
+    progressDate: new Date('2025-12-14'),
+    startDate: new Date('2025-12-05'),
+    endDate: new Date('2025-12-15'),
+    createdAt: new Date('2025-11-30'),
+    assignees: ['u4'],
+    history: [
+        { status: 'Start', date: new Date('2025-12-05'), updatedBy: 'u4' },
+        { status: 'Draft', date: new Date('2025-12-10'), updatedBy: 'u4' },
+        { status: 'Revisi', date: new Date('2025-12-11'), updatedBy: 'u5' },
+        { status: 'Finish', date: new Date('2025-12-14'), updatedBy: 'u4' }
+    ]
+  }
+];
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -194,85 +269,62 @@ const App: React.FC = () => {
   // --- 5. DATA FETCHING & AUTO SYNC ---
   useEffect(() => {
     // Listen to Users
-    const unsubUsers = onSnapshot(collection(db, "users"), async (snapshot) => {
-        if (snapshot.empty) {
-            console.log("Database Empty: Auto-seeding Users...");
-            // Use setDoc to preserve IDs from Constants so relationships work
-            for (const u of MOCK_USERS) { 
-                const { id, ...data } = u; 
-                await setDoc(doc(db, "users", u.id), u); 
-            }
-        } else {
-            const fetchedUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as User[];
-            setUsers(fetchedUsers);
-        }
+    const unsubUsers = onSnapshot(collection(db, "users"), (snapshot) => {
+        // NO AUTO-SEEDING HERE
+        const fetchedUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as User[];
+        setUsers(fetchedUsers);
     }, (error) => {
         console.error("Firebase error (Users):", error);
     });
 
     // Listen to Projects
-    const unsubProjects = onSnapshot(collection(db, "projects"), async (snapshot) => {
-        if (snapshot.empty) {
-            console.log("Database Empty: Auto-seeding Projects...");
-            for (const p of MOCK_PROJECTS) { 
-                await setDoc(doc(db, "projects", p.id), p); 
-            }
-        } else {
-            const fetched = snapshot.docs.map(doc => {
-                const data = doc.data();
-                return {
-                    ...data,
-                    id: doc.id,
-                    startDate: safeDate(data.startDate),
-                    endDate: safeDate(data.endDate),
-                };
-            }) as Project[];
-            setProjects(fetched);
-        }
+    const unsubProjects = onSnapshot(collection(db, "projects"), (snapshot) => {
+        // NO AUTO-SEEDING HERE
+        const fetched = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                ...data,
+                id: doc.id,
+                startDate: safeDate(data.startDate),
+                endDate: safeDate(data.endDate),
+            };
+        }) as Project[];
+        setProjects(fetched);
     }, (error) => {
         console.error("Firebase error (Projects):", error);
     });
 
     // Listen to Tasks
-    const unsubTasks = onSnapshot(collection(db, "tasks"), async (snapshot) => {
-        if (snapshot.empty) {
-             console.log("Database Empty: Auto-seeding Tasks...");
-             for (const t of MOCK_TASKS) { 
-                // Add default createdAt for mocks
-                const tWithDate = { ...t, createdAt: new Date() };
-                await setDoc(doc(db, "tasks", t.id), tWithDate); 
-             }
-             setLoading(false);
-        } else {
-            const fetchedTasks = snapshot.docs.map(doc => {
-                const data = doc.data();
-                
-                // Ensure valid dates
-                const sDate = safeDate(data.startDate);
-                const eDate = safeDate(data.endDate);
-                const pDate = safeDate(data.progressDate, sDate); // Fallback to start date
-                const cDate = safeDate(data.createdAt, new Date(0)); // Fallback to Epoch
+    const unsubTasks = onSnapshot(collection(db, "tasks"), (snapshot) => {
+        // NO AUTO-SEEDING HERE
+        const fetchedTasks = snapshot.docs.map(doc => {
+            const data = doc.data();
+            
+            // Ensure valid dates
+            const sDate = safeDate(data.startDate);
+            const eDate = safeDate(data.endDate);
+            const pDate = safeDate(data.progressDate, sDate); // Fallback to start date
+            const cDate = safeDate(data.createdAt, new Date(0)); // Fallback to Epoch
 
-                // Process History Dates
-                const history = (data.history || []).map((h: any) => ({
-                    ...h,
-                    date: safeDate(h.date)
-                }));
+            // Process History Dates
+            const history = (data.history || []).map((h: any) => ({
+                ...h,
+                date: safeDate(h.date)
+            }));
 
-                return {
-                    ...data,
-                    id: doc.id,
-                    startDate: sDate,
-                    endDate: eDate,
-                    progressDate: pDate,
-                    createdAt: cDate,
-                    progress: data.progress || 'Not Started',
-                    history
-                }
-            }) as Task[];
-            setTasks(fetchedTasks);
-            setLoading(false);
-        }
+            return {
+                ...data,
+                id: doc.id,
+                startDate: sDate,
+                endDate: eDate,
+                progressDate: pDate,
+                createdAt: cDate,
+                progress: data.progress || 'Not Started',
+                history
+            }
+        }) as Task[];
+        setTasks(fetchedTasks);
+        setLoading(false);
     }, (error) => {
         console.error("Firebase error (Tasks):", error);
         setLoading(false);
@@ -477,8 +529,8 @@ const App: React.FC = () => {
       if (!confirm("Paksa upload data ulang?")) return;
       try {
           for (const u of MOCK_USERS) await setDoc(doc(db, "users", u.id), u);
-          for (const p of MOCK_PROJECTS) await setDoc(doc(db, "projects", p.id), p);
-          for (const t of MOCK_TASKS) await setDoc(doc(db, "tasks", t.id), t);
+          for (const p of SEED_PROJECTS) await setDoc(doc(db, "projects", p.id), p);
+          for (const t of SEED_TASKS) await setDoc(doc(db, "tasks", t.id), t);
           alert("Database Synced!");
       } catch (error) {
           console.error("Error seeding:", error);
