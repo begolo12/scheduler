@@ -63,7 +63,8 @@ export interface Task {
   history?: TaskHistory[]; // New Field to track S, D, R, F timestamps
 }
 
-export interface Notification {
+// RENAMED to avoid conflict with window.Notification
+export interface AppNotification {
   id: string;
   title: string;
   message: string;

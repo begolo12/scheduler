@@ -11,7 +11,7 @@ import Settings from './components/Settings';
 import Login from './components/Login';
 import Toaster, { ToastMessage } from './components/Toaster'; // Import Toaster
 import { TaskModal, NewPersonnelModal, ProjectModal } from './components/Modals';
-import { Tab, Task, User, Role, Project, Notification, FileAttachment } from './types';
+import { Tab, Task, User, Role, Project, AppNotification, FileAttachment } from './types'; // Updated Import
 import { USERS as MOCK_USERS, TASKS as MOCK_TASKS, PROJECTS as MOCK_PROJECTS, TELEGRAM_BOT_TOKEN } from './constants';
 
 // --- CONFIGURATION ---
@@ -37,7 +37,7 @@ const App: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]); // Updated Type
   const [loading, setLoading] = useState(true);
 
   // UI State
@@ -74,6 +74,7 @@ const App: React.FC = () => {
         }
     }
     // Request Browser Notification Permission on Load
+    // Note: Checking window.Notification explicitly
     if ("Notification" in window) {
         if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
             Notification.requestPermission();
@@ -283,7 +284,7 @@ const App: React.FC = () => {
             ...doc.data(),
             id: doc.id,
             timestamp: safeDate(doc.data().timestamp)
-        })) as Notification[];
+        })) as AppNotification[]; // Updated Type
         // Sort descending by time
         setNotifications(fetchedNotifs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
     });
@@ -297,7 +298,7 @@ const App: React.FC = () => {
   }, []);
 
   // --- Helper: Create Notification ---
-  const createNotification = async (notif: Partial<Notification>) => {
+  const createNotification = async (notif: Partial<AppNotification>) => {
       try {
           await addDoc(collection(db, "notifications"), {
               ...notif,
@@ -313,6 +314,7 @@ const App: React.FC = () => {
 
   // 1. Browser Native Notification
   const sendBrowserNotification = (title: string, body: string) => {
+      // Use window.Notification to avoid ambiguity
       if ("Notification" in window && Notification.permission === "granted") {
           new Notification(title, { body, icon: '/favicon.ico' });
       }
