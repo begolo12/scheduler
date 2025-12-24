@@ -1,0 +1,17 @@
+{
+  "name": "functions",
+  "description": "Local Bot Server for Daniswara Scheduler",
+  "scripts": {
+    "start": "node local-bot.js"
+  },
+  "engines": {
+    "node": "18"
+  },
+  "main": "local-bot.js",
+  "dependencies": {
+    "firebase": "^10.0.0",
+    "node-telegram-bot-api": "^0.61.0",
+    "node-fetch": "^2.6.9"
+  },
+  "private": true
+}
